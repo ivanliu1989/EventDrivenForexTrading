@@ -9,7 +9,7 @@ import pandas as pd
 
 from event.event import OrderEvent
 from performance.performance import create_drawdowns
-from portfolio.position import Position
+from position import Position
 from settings import OUTPUT_RESULTS_DIR
 
 

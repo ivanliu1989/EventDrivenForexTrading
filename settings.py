@@ -17,8 +17,8 @@ ENVIRONMENTS = {
     }
 }
 
-CSV_DATA_DIR = os.environ.get('QSFOREX_CSV_DATA_DIR', None)
-OUTPUT_RESULTS_DIR = os.environ.get('QSFOREX_OUTPUT_RESULTS_DIR', None)
+CSV_DATA_DIR = 'C:\\Users\\sky_x\\Google Drive\\1. Work In Progress\\Git Projects\\Datasets\\'
+OUTPUT_RESULTS_DIR = 'C:\\Users\\sky_x\\Google Drive\\1. Work In Progress\\Git Projects\\EventDrivenForexTrading\\Output\\'
 
 DOMAIN = "practice"
 STREAM_DOMAIN = ENVIRONMENTS["streaming"][DOMAIN]

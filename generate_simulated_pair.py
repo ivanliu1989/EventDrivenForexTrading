@@ -28,8 +28,7 @@ def month_weekdays(year_int, month_int):
 
 if __name__ == "__main__":
     try:
-        #pair = sys.argv[1]
-        pair = "AUDUSD"
+        pair = sys.argv[1]
     except IndexError:
         print("You need to enter a currency pair, e.g. GBPUSD, as a command line parameter.")
     else:
@@ -53,8 +52,7 @@ if __name__ == "__main__":
             current_time = current_time.replace(day=d.day)
             outfile = open(
                 os.path.join(
-                    #settings.CSV_DATA_DIR, 
-                    CSV_DATA_DIR,
+                    settings.CSV_DATA_DIR, 
                     "%s_%s.csv" % (
                         pair, d.strftime("%Y%m%d")
                     )
