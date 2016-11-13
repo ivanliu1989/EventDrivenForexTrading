@@ -5,7 +5,8 @@ from event.event import OrderEvent
 from position import Position
 
 
-class Portfolio(object):
+class Portfolio(object): 
+
     def __init__(
         self, ticker, events, base="GBP", leverage=20, 
         equity=100000.0, risk_per_trade=0.02
@@ -27,6 +28,7 @@ class Portfolio(object):
         self, side, market, units, exposure,
         add_price, remove_price
     ):
+        # takes the parameters necessary to add a new position to the portfolio
         ps = Position(
             side, market, units, exposure,
             add_price, remove_price
@@ -37,6 +39,7 @@ class Portfolio(object):
         self, market, units, exposure, 
         add_price, remove_price
     ):
+        # allows units to be added to a position once the position has been created
         if market not in self.positions:
             return False
         else:
@@ -52,6 +55,7 @@ class Portfolio(object):
     def remove_position_units(
         self, market, units, remove_price
     ):
+        # a method to remove the units from a position (but not to close it entirely)
         if market not in self.positions:
             return False
         else:
@@ -67,6 +71,7 @@ class Portfolio(object):
     def close_position(
         self, market, remove_price
     ):
+        # fully close a position
         if market not in self.positions:
             return False
         else:
@@ -78,6 +83,15 @@ class Portfolio(object):
             return True
 
     def execute_signal(self, signal_event):
+        #==============================================================================
+        #     If there is no current position for this currency pair, create one.
+        #     If a position already exists, check to see if it is adding or subtracting units.
+        #     If it is adding units, then simply add the correct amount of units.
+        #     If it is not adding units, then check if the new opposing unit reduction closes out the trade, if so, then do so.
+        #     If the reducing units are less than the position units, simply remove that quantity from the position.
+        #     However, if the reducing units exceed the current position, it is necessary to close the current position by the reducing units and 
+        #     then create a new opposing position with the remaining units. I have not tested this extensively as of yet, so there may still be bugs!
+        #==============================================================================
         side = signal_event.side
         market = signal_event.instrument
         units = int(self.trade_units)
