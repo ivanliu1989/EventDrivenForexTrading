@@ -1,149 +1,192 @@
-# -*- coding: utf-8 -*-
+from __future__ import print_function
+
 from copy import deepcopy
+from decimal import Decimal, getcontext, ROUND_HALF_DOWN
+import logging
+import os
+
+import pandas as pd
 
 from event.event import OrderEvent
-from position import Position
+from performance.performance import create_drawdowns
+from portfolio.position import Position
+from settings import OUTPUT_RESULTS_DIR
 
 
-class Portfolio(object): 
-
+class Portfolio(object):
     def __init__(
-        self, ticker, events, base="GBP", leverage=20, 
-        equity=100000.0, risk_per_trade=0.02
+        self, ticker, events, home_currency="AUD", 
+        leverage=20, equity=Decimal("100000.00"), 
+        risk_per_trade=Decimal("0.02"), backtest=True
     ):
-        self.ticker = ticker # the streaming forex prices ticker handler. lastest bid/ask prices
-        self.events = events # order events
-        self.base = base # base currency
-        self.leverage = leverage # leverage 1:20
-        self.equity = equity 
+        self.ticker = ticker
+        self.events = events
+        self.home_currency = home_currency
+        self.leverage = leverage
+        self.equity = equity
         self.balance = deepcopy(self.equity)
-        self.risk_per_trade = risk_per_trade # % of acc equity to risk per trade
+        self.risk_per_trade = risk_per_trade
+        self.backtest = backtest
         self.trade_units = self.calc_risk_position_size()
         self.positions = {}
+        if self.backtest:
+            self.backtest_file = self.create_equity_file()
+        self.logger = logging.getLogger(__name__)
 
     def calc_risk_position_size(self):
         return self.equity * self.risk_per_trade
 
     def add_new_position(
-        self, side, market, units, exposure,
-        add_price, remove_price
+        self, position_type, currency_pair, units, ticker
     ):
-        # takes the parameters necessary to add a new position to the portfolio
         ps = Position(
-            side, market, units, exposure,
-            add_price, remove_price
+            self.home_currency, position_type, 
+            currency_pair, units, ticker
         )
-        self.positions[market] = ps
+        self.positions[currency_pair] = ps
 
-    def add_position_units(
-        self, market, units, exposure, 
-        add_price, remove_price
-    ):
-        # allows units to be added to a position once the position has been created
-        if market not in self.positions:
+    def add_position_units(self, currency_pair, units):
+        if currency_pair not in self.positions:
             return False
         else:
-            ps = self.positions[market]
-            new_total_units = ps.units + units
-            new_total_cost = ps.avg_price*ps.units + add_price*units
-            ps.exposure += exposure
-            ps.avg_price = new_total_cost/new_total_units
-            ps.units = new_total_units
-            ps.update_position_price(remove_price)
+            ps = self.positions[currency_pair]
+            ps.add_units(units)
             return True
 
-    def remove_position_units(
-        self, market, units, remove_price
-    ):
-        # a method to remove the units from a position (but not to close it entirely)
-        if market not in self.positions:
+    def remove_position_units(self, currency_pair, units):
+        if currency_pair not in self.positions:
             return False
         else:
-            ps = self.positions[market]
-            ps.units -= units
-            exposure = float(units)
-            ps.exposure -= exposure
-            ps.update_position_price(remove_price)
-            pnl = ps.calculate_pips() * exposure / remove_price 
+            ps = self.positions[currency_pair]
+            pnl = ps.remove_units(units)
             self.balance += pnl
             return True
 
-    def close_position(
-        self, market, remove_price
-    ):
-        # fully close a position
-        if market not in self.positions:
+    def close_position(self, currency_pair):
+        if currency_pair not in self.positions:
             return False
         else:
-            ps = self.positions[market]
-            ps.update_position_price(remove_price)
-            pnl = ps.calculate_pips() * ps.exposure / remove_price 
+            ps = self.positions[currency_pair]
+            pnl = ps.close_position()
             self.balance += pnl
-            del[self.positions[market]]
+            del[self.positions[currency_pair]]
             return True
+
+    def create_equity_file(self):
+        filename = "backtest.csv"
+        out_file = open(os.path.join(OUTPUT_RESULTS_DIR, filename), "w")
+        header = "Timestamp,Balance"
+        for pair in self.ticker.pairs:
+            header += ",%s" % pair
+        header += "\n"
+        out_file.write(header)
+        if self.backtest:
+            print(header[:-2])
+        return out_file
+
+    def output_results(self):
+        # Closes off the Backtest.csv file so it can be 
+        # read via Pandas without problems
+        self.backtest_file.close()
+        
+        in_filename = "backtest.csv"
+        out_filename = "equity.csv" 
+        in_file = os.path.join(OUTPUT_RESULTS_DIR, in_filename)
+        out_file = os.path.join(OUTPUT_RESULTS_DIR, out_filename)
+
+        # Create equity curve dataframe
+        df = pd.read_csv(in_file, index_col=0)
+        df.dropna(inplace=True)
+        df["Total"] = df.sum(axis=1)
+        df["Returns"] = df["Total"].pct_change()
+        df["Equity"] = (1.0+df["Returns"]).cumprod()
+        
+        # Create drawdown statistics
+        drawdown, max_dd, dd_duration = create_drawdowns(df["Equity"])
+        df["Drawdown"] = drawdown
+        df.to_csv(out_file, index=True)
+        
+        print("Simulation complete and results exported to %s" % out_filename)
+
+    def update_portfolio(self, tick_event):
+        """
+        This updates all positions ensuring an up to date
+        unrealised profit and loss (PnL).
+        """
+        currency_pair = tick_event.instrument
+        if currency_pair in self.positions:
+            ps = self.positions[currency_pair]
+            ps.update_position_price()
+        if self.backtest:
+            out_line = "%s,%s" % (tick_event.time, self.balance)
+            for pair in self.ticker.pairs:
+                if pair in self.positions:
+                    out_line += ",%s" % self.positions[pair].profit_base
+                else:
+                    out_line += ",0.00"
+            out_line += "\n"
+            print(out_line[:-2])
+            self.backtest_file.write(out_line)
 
     def execute_signal(self, signal_event):
-        #==============================================================================
-        #     If there is no current position for this currency pair, create one.
-        #     If a position already exists, check to see if it is adding or subtracting units.
-        #     If it is adding units, then simply add the correct amount of units.
-        #     If it is not adding units, then check if the new opposing unit reduction closes out the trade, if so, then do so.
-        #     If the reducing units are less than the position units, simply remove that quantity from the position.
-        #     However, if the reducing units exceed the current position, it is necessary to close the current position by the reducing units and 
-        #     then create a new opposing position with the remaining units. I have not tested this extensively as of yet, so there may still be bugs!
-        #==============================================================================
-        side = signal_event.side
-        market = signal_event.instrument
-        units = int(self.trade_units)
+        # Check that the prices ticker contains all necessary
+        # currency pairs prior to executing an order
+        execute = True
+        tp = self.ticker.prices
+        for pair in tp:
+            if tp[pair]["ask"] is None or tp[pair]["bid"] is None:
+                execute = False
 
-        # Check side for correct bid/ask prices
-        add_price = self.ticker.cur_ask
-        remove_price = self.ticker.cur_bid
-        exposure = float(units)
-
-        # If there is no position, create one
-        if market not in self.positions:
-            self.add_new_position(
-                side, market, units, exposure,
-                add_price, remove_price
-            )
-            order = OrderEvent(market, units, "market", "buy")
-            self.events.put(order)
-        # If a position exists add or remove units
-        else:
-            ps = self.positions[market]
-            # Check if the sides equal
-            if side == ps.side:
-                # Add to the position
-                self.add_position_units(
-                    market, units, exposure,
-                    add_price, remove_price
+        # All necessary pricing data is available,
+        # we can execute
+        if execute:
+            side = signal_event.side
+            currency_pair = signal_event.instrument
+            units = int(self.trade_units)
+            time = signal_event.time
+            
+            # If there is no position, create one
+            if currency_pair not in self.positions:
+                if side == "buy":
+                    position_type = "long"
+                else:
+                    position_type = "short"
+                self.add_new_position(
+                    position_type, currency_pair, 
+                    units, self.ticker
                 )
+
+            # If a position exists add or remove units
             else:
-                # Check if the units close out the position
-                if units == ps.units:
-                    # Close the position
-                    self.close_position(market, remove_price)
-                    order = OrderEvent(market, units, "market", "sell")
-                    self.events.put(order)
-                elif units < ps.units:
-                    # Remove from the position
-                    self.remove_position_units(
-                        market, units, remove_price
-                    )
-                else: # units > ps.units
-                    # Close the position and add a new one with
-                    # additional units of opposite side
-                    new_units = units - ps.units
-                    self.close_position(market, remove_price)
-                    
-                    if side == "buy":
-                        new_side = "sell"
-                    else:
-                        new_side = "sell"
-                    new_exposure = float(units)
-                    self.add_new_position(
-                        new_side, market, new_units, 
-                        new_exposure, add_price, remove_price
-                    )
-        print "Balance: %0.2f" % self.balance
+                ps = self.positions[currency_pair]
+
+                if side == "buy" and ps.position_type == "long":
+                    add_position_units(currency_pair, units)
+
+                elif side == "sell" and ps.position_type == "long":
+                    if units == ps.units:
+                        self.close_position(currency_pair)
+                    # TODO: Allow units to be added/removed
+                    elif units < ps.units:
+                        return
+                    elif units > ps.units:
+                        return
+
+                elif side == "buy" and ps.position_type == "short":
+                    if units == ps.units:
+                        self.close_position(currency_pair)
+                    # TODO: Allow units to be added/removed
+                    elif units < ps.units:
+                        return
+                    elif units > ps.units:
+                        return
+                        
+                elif side == "sell" and ps.position_type == "short":
+                    add_position_units(currency_pair, units)
+
+            order = OrderEvent(currency_pair, units, "market", side)
+            self.events.put(order)
+
+            self.logger.info("Portfolio Balance: %s" % self.balance)
+        else:
+            self.logger.info("Unable to execute order as price data was insufficient.")
