@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
 from copy import deepcopy
 
 from event.event import OrderEvent
-from portfolio.position import Position
+from position import Position
 
 
 class Portfolio(object):
@@ -11,13 +10,13 @@ class Portfolio(object):
         self, ticker, events, base="GBP", leverage=20, 
         equity=100000.0, risk_per_trade=0.02
     ):
-        self.ticker = ticker
-        self.events = events
-        self.base = base
-        self.leverage = leverage
-        self.equity = equity
+        self.ticker = ticker # the streaming forex prices ticker handler. lastest bid/ask prices
+        self.events = events # order events
+        self.base = base # base currency
+        self.leverage = leverage # leverage 1:20
+        self.equity = equity 
         self.balance = deepcopy(self.equity)
-        self.risk_per_trade = risk_per_trade
+        self.risk_per_trade = risk_per_trade # % of acc equity to risk per trade
         self.trade_units = self.calc_risk_position_size()
         self.positions = {}
 
