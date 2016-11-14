@@ -81,13 +81,13 @@ class OandaApi(object):
         
         self.headers['Authorization'] = 'Bearer ' + self.token
         
-        self.initFunctionSetting(FUNCTIONCODE_GETINSTRUMENTS, {'path': '/v3/instruments',
+        self.initFunctionSetting(FUNCTIONCODE_GETINSTRUMENTS, {'path': '/v1/instruments',
                                                           'method': 'GET'})
         
         self.initFunctionSetting(FUNCTIONCODE_GETPRICES, {'path': '/v1/prices',
                                                           'method': 'GET'})        
         
-        self.initFunctionSetting(FUNCTIONCODE_GETPRICEHISTORY, {'path': '/v3/candles',
+        self.initFunctionSetting(FUNCTIONCODE_GETPRICEHISTORY, {'path': '/v3/%r/candles',
                                                                 'method': 'GET'})
         
         self.initFunctionSetting(FUNCTIONCODE_GETACCOUNTS, {'path': '/v3/accounts',
@@ -283,8 +283,10 @@ class OandaApi(object):
         print data, reqID
         
     #----------------------------------------------------------------------
-    def getPriceHisory(self, params):
+    def getPriceHisory(self, instrument, params):
         """查询历史价格数据"""
+        self.functionSetting[FUNCTIONCODE_GETPRICEHISTORY]['path'] = self.functionSetting[FUNCTIONCODE_GETPRICEHISTORY]['path'] %instrument
+
         return self.sendRequest(FUNCTIONCODE_GETPRICEHISTORY, params, self.onGetPriceHistory)
         
     #----------------------------------------------------------------------

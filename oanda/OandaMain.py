@@ -15,18 +15,18 @@ if __name__ == '__main__':
     #api.processStreamPrices()
     
     # 获取交易合约列表，通过
-    #api.getInstruments({'accountId': accountId})
+    api.getInstruments({'accountId': accountId})
     
     # 获取价格，通过
 #    while 1:
     api.getPrices({'instruments': 'AUD_USD'})
     
     # 获取历史数据，失败
-#    api.getPriceHisory({'instrument': 'EUR_USD',
-#                        'granularity': 'D',
-#                        'candleFormat': 'midpoint',
-#                        'count': '50'})
-#    
+    api.getPriceHisory('EUR_USD',{'instrument': 'EUR_USD',
+                        'granularity': 'D',
+                        'candleFormat': 'midpoint',
+                        'count': '50'})
+    
     # 查询用户的所有账户，通过
     api.getAccounts()
     
