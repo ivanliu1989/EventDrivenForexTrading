@@ -37,18 +37,18 @@ if __name__ == '__main__':
     api.getOrders({})
     
     # 发送委托，通过
-#    api.sendOrder({'instrument': 'EUR_USD',
-#                   'units': '10000',
-#                   'side': 'buy',
-#                   'type': 'market'})
+    api.sendOrder({'instrument': 'AUD_USD',
+                   'units': '1000000',
+                   'price': '1.2000',
+                   'type': 'MARKET'})
 #    
     # 查询委托数据，通过
     #api.getOrderInfo('123')
     
     # 修改委托，通过
-    #api.modifyOrder({'units': '10000',
-                   #'side': 'buy',
-                   #'type': 'market'}, '123')    
+#    api.modifyOrder({'units': '10000',
+#                   'side': 'buy',
+#                   'type': 'MARKET'}, '123')    
     
     # 撤销委托，通过
     #api.cancelOrder('123')
