@@ -67,7 +67,7 @@ class OANDAExecutionHandler(ExecutionHandler):
         })
         self.conn.request(
             "POST", 
-            "/v1/accounts/%s/orders" % str(self.account_id), 
+            "/v3/accounts/%s/orders" % str(self.account_id), 
             params, headers
         )
         response = self.conn.getresponse().read().decode("utf-8").replace("\n","").replace("\t","")

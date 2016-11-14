@@ -57,7 +57,7 @@ if __name__ == "__main__":
     equity = settings.EQUITY
 
     # Pairs to include in streaming data set
-    pairs = ["AUDUSD", "USDCAD"]
+    pairs = ["AUD_USD", "USD_CAD"]
 
     # Create the OANDA market price streaming class
     # making sure to provide authentication commands

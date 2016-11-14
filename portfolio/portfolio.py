@@ -16,7 +16,7 @@ from settings import OUTPUT_RESULTS_DIR
 class Portfolio(object):
     def __init__(
         self, ticker, events, home_currency="AUD", 
-        leverage=20, equity=Decimal("100000.00"), 
+        leverage=20, equity=Decimal("1000000.00"), 
         risk_per_trade=Decimal("0.02"), backtest=True
     ):
         self.ticker = ticker
