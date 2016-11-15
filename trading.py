@@ -100,6 +100,3 @@ if __name__ == "__main__":
     logger.info("Starting price streaming thread")
     price_thread.start()
     
-"""
-2016-11-15 21:11:53,703 - execution.execution - DEBUG - {"errorMessage":"Incorrect Content-Type: must be textual to extract_string, JSON to extract_json."}
-"""
