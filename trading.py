@@ -50,14 +50,14 @@ if __name__ == "__main__":
     logger = logging.getLogger('trading')
 
     # Set the number of decimal places to 2
-    getcontext().prec = 2
+    getcontext().prec = 11
 
-    heartbeat = 0.0  # Time in seconds between polling
+    heartbeat = 1.0  # Time in seconds between polling
     events = queue.Queue()
     equity = settings.EQUITY
 
     # Pairs to include in streaming data set
-    pairs = ["AUD_USD", "USD_CAD"]
+    pairs = ["AUDUSD"]
 
     # Create the OANDA market price streaming class
     # making sure to provide authentication commands
@@ -99,3 +99,7 @@ if __name__ == "__main__":
     trade_thread.start()
     logger.info("Starting price streaming thread")
     price_thread.start()
+    
+"""
+2016-11-15 21:11:53,703 - execution.execution - DEBUG - {"errorMessage":"Incorrect Content-Type: must be textual to extract_string, JSON to extract_json."}
+"""

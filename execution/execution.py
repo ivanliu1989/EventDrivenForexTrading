@@ -13,6 +13,8 @@ except ImportError:
     from urllib.parse import urlencode
 import urllib3
 urllib3.disable_warnings()
+import json
+import requests
 
 
 class ExecutionHandler(object):
@@ -56,19 +58,27 @@ class OANDAExecutionHandler(ExecutionHandler):
     def execute_order(self, event):
         instrument = "%s_%s" % (event.instrument[:3], event.instrument[3:])
         headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
             "Authorization": "Bearer " + self.access_token
         }
-        params = urlencode({
-            "instrument" : instrument,
-            "units" : event.units,
-            "type" : event.order_type,
-            "side" : event.side
+        if event.side == 'BUY':
+            units = event.units
+        else:
+            units = -event.units
+        params = json.dumps(
+            {"order": {
+                "units": str(units), 
+                "instrument": instrument, 
+                "timeInForce": "FOK", 
+                "type": "MARKET",#event.order_type, 
+                "positionFill": "DEFAULT",
+                "side": event.side
+              }
         })
-        self.conn.request(
-            "POST", 
-            "/v3/accounts/%s/orders" % str(self.account_id), 
-            params, headers
-        )
-        response = self.conn.getresponse().read().decode("utf-8").replace("\n","").replace("\t","")
+        print(params)
+        url = 'https://' + self.domain + '/v3/accounts/' + self.account_id + '/orders'
+        
+        response = requests.post(url, data=params, headers=headers)
         self.logger.debug(response)
+        
+        

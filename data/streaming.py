@@ -31,6 +31,7 @@ class StreamingForexPrices(PriceHandler):
         This will turn the bid/ask of "GBPUSD" into bid/ask for
         "USDGBP" and place them in the prices dictionary.
         """
+        getcontext().prec = 11
         getcontext().rounding = ROUND_HALF_DOWN
         inv_pair = "%s%s" % (pair[3:], pair[:3])
         inv_bid = (Decimal("1.0")/bid).quantize(
@@ -47,10 +48,10 @@ class StreamingForexPrices(PriceHandler):
         try:
             requests.packages.urllib3.disable_warnings()
             s = requests.Session()
-            url = "https://" + self.domain + "/v1/prices"
+            url = "https://" + self.domain + "/v3/accounts/" + self.account_id + "/pricing/stream?instruments=" + pair_list
             headers = {'Authorization' : 'Bearer ' + self.access_token}
-            params = {'instruments' : pair_list, 'accountId' : self.account_id}
-            req = requests.Request('GET', url, headers=headers, params=params)
+            #params = {'instruments' : pair_list, 'accountId' : self.account_id}
+            req = requests.Request('GET', url, headers=headers) #, params=params
             pre = req.prepare()
             resp = s.send(pre, stream=True, verify=False)
             return resp
@@ -75,12 +76,12 @@ class StreamingForexPrices(PriceHandler):
                 if "instrument" in msg or "tick" in msg:
                     self.logger.debug(msg)
                     getcontext().rounding = ROUND_HALF_DOWN 
-                    instrument = msg["tick"]["instrument"].replace("_", "")
-                    time = msg["tick"]["time"]
-                    bid = Decimal(str(msg["tick"]["bid"])).quantize(
+                    instrument = msg["instrument"].replace("_", "")
+                    time = msg["time"]
+                    bid = Decimal(str(msg["bids"][0]["price"])).quantize(
                         Decimal("0.00001")
                     )
-                    ask = Decimal(str(msg["tick"]["ask"])).quantize(
+                    ask = Decimal(str(msg["asks"][0]["price"])).quantize(
                         Decimal("0.00001")
                     )
                     self.prices[instrument]["bid"] = bid
@@ -92,3 +93,4 @@ class StreamingForexPrices(PriceHandler):
                     self.prices[inv_pair]["time"] = time
                     tev = TickEvent(instrument, time, bid, ask)
                     self.events_queue.put(tev)
+                    

@@ -37,10 +37,10 @@ if __name__ == '__main__':
     api.getOrders({})
     
     # 发送委托，通过
-    api.sendOrder({'instrument': 'AUD_USD',
-                   'units': '1000000',
-                   'price': '1.2000',
-                   'type': 'MARKET'})
+    api.sendOrder({"instrument": "USD_CAD",
+                               "units" : 50,
+                               "side" : "buy",
+                               "type" : "market"})
 #    
     # 查询委托数据，通过
     #api.getOrderInfo('123')
